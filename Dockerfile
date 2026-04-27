@@ -8,6 +8,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \
     openjdk-11-jdk \
     wget curl ssh rsync \
+    python3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Set Java home
@@ -54,3 +55,6 @@ ENV HADOOP_CONF_DIR=${HADOOP_HOME}/etc/hadoop
 # Copy startup scripts
 COPY scripts/ /scripts/
 RUN chmod +x /scripts/*.sh
+# Copy MapReduce jobs
+COPY mapreduce/ /mapreduce/
+RUN chmod +x /mapreduce/wordcount/*.sh /mapreduce/wordcount/*.py

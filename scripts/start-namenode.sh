@@ -3,7 +3,7 @@ export SPARK_DIST_CLASSPATH=$(hadoop classpath)
 service ssh start
 
 # Format HDFS only on first run
-if [ ! -d "/opt/hadoop/data/namenode" ]; then
+if [ ! -f "/opt/hadoop/data/namenode/current/VERSION" ]; then
   hdfs namenode -format -force
 fi
 
