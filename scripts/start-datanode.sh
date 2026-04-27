@@ -1,4 +1,5 @@
 #!/bin/bash
+export SPARK_DIST_CLASSPATH=$(hadoop classpath)
 service ssh start
 
 # Wait for NameNode to be ready

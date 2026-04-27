@@ -1,5 +1,3 @@
-version: '3.8'
-
 networks:
   hadoop-net:
     driver: bridge
@@ -56,8 +54,25 @@ services:
       - JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
     volumes:
       - datanode2-data:/opt/hadoop/data/datanode
+  datanode3:
+    build: .
+    container_name: datanode3
+    hostname: datanode3
+    networks:
+      - hadoop-net
+    depends_on:
+      - namenode
+    ports:
+      - "9866:9864"
+      - "8044:8042"
+    command: ["/scripts/start-datanode.sh"]
+    environment:
+      - JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+    volumes:
+      - datanode3-data:/opt/hadoop/data/datanode
 
 volumes:
   namenode-data:
   datanode1-data:
   datanode2-data:
+  datanode3-data:

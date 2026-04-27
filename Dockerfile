@@ -25,11 +25,11 @@ RUN wget -q https://downloads.apache.org/hadoop/common/hadoop-${HADOOP_VERSION}/
     && rm hadoop-${HADOOP_VERSION}.tar.gz
 
 # ---- Install Spark ----
-ENV SPARK_VERSION=3.5.1
+ENV SPARK_VERSION=3.5.3
 ENV SPARK_HOME=/opt/spark
 ENV PATH=$PATH:$SPARK_HOME/bin:$SPARK_HOME/sbin
 
-RUN wget -q https://downloads.apache.org/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop3.tgz \
+RUN wget -q https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop3.tgz \
     && tar -xzf spark-${SPARK_VERSION}-bin-hadoop3.tgz -C /opt/ \
     && mv /opt/spark-${SPARK_VERSION}-bin-hadoop3 ${SPARK_HOME} \
     && rm spark-${SPARK_VERSION}-bin-hadoop3.tgz
@@ -50,4 +50,7 @@ RUN chmod +x /scripts/*.sh
 
 # Tell Spark where Hadoop configs are
 ENV HADOOP_CONF_DIR=${HADOOP_HOME}/etc/hadoop
-ENV SPARK_DIST_CLASSPATH=$(${HADOOP_HOME}/bin/hadoop classpath)
+
+# Copy startup scripts
+COPY scripts/ /scripts/
+RUN chmod +x /scripts/*.sh
