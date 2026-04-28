@@ -1,6 +1,6 @@
-# MapReduce Java — Total des ventes par catégorie
+# MapReduce Python Streaming — Total des ventes par catégorie
 
-Job MapReduce écrit en **Java natif** sur un cluster Hadoop + Spark dockerisé.  
+Job MapReduce écrit en **Python avec Hadoop Streaming** sur un cluster Hadoop + Spark dockerisé.  
 Le job analyse le fichier `purchases.txt` (4,1 millions de lignes) et calcule le **total des ventes par catégorie**.
 
 ---
@@ -35,8 +35,9 @@ Le job analyse le fichier `purchases.txt` (4,1 millions de lignes) et calcule le
 | Composant | Version | Rôle |
 |-----------|---------|------|
 | Ubuntu | 22.04 | OS de base des containers |
-| Java | OpenJDK 11 | Runtime + compilation du job MapReduce |
-| Hadoop | 3.3.6 | HDFS + YARN |
+| Java | OpenJDK 11 | Runtime pour Hadoop (requis même pour Python Streaming) |
+| Python | 3.x | Écriture du Mapper et Reducer |
+| Hadoop | 3.3.6 | HDFS + YARN + Hadoop Streaming |
 | Spark | 3.5.3 | Moteur de calcul distribué |
 | Docker | 20+ | Containerisation |
 | Docker Compose | v2 | Orchestration des containers |
@@ -59,25 +60,30 @@ hadoop-spark-cluster/
 │   ├── start-namenode.sh             # Démarre NameNode + ResourceManager
 │   └── start-datanode.sh             # Démarre DataNode + NodeManager
 └── mapreduce/wordcount/
-    ├── SalesPerCategory.java         # Job MapReduce Java (Mapper + Reducer + Driver)
-    ├── run.sh                        # Script : compile + lance le job
+    ├── mapper.py                     # Mapper Python : extrait (catégorie, montant)
+    ├── reducer.py                    # Reducer Python : somme par catégorie
+    ├── run_streaming.sh              # Script : lance le job via Hadoop Streaming
     └── input/
         └── purchases.txt             # Données d'entrée (4,1M lignes)
 ```
 
 ---
 
-## Comment fonctionne le job Java
+## Comment fonctionne Hadoop Streaming
 
 ```
-SalesPerCategory.java
+Hadoop Streaming
         │
-        ├── Mapper  : lit chaque ligne → extrait (catégorie, montant)
-        ├── Reducer : reçoit (catégorie, [montant1, montant2, ...]) → émet (catégorie, total)
-        └── Driver  : configure et soumet le job à YARN
+        ├── mapper.py   : lit stdin ligne par ligne → écrit "catégorie\tmontant" sur stdout
+        │                 (Hadoop distribue les lignes sur les DataNodes)
+        │
+        ├── [Sort & Shuffle automatique par Hadoop]
+        │
+        └── reducer.py  : lit stdin trié → accumule les montants → écrit "catégorie\ttotal"
 ```
 
-Le job est **compilé en JAR** à l'intérieur du container, puis soumis à YARN avec `hadoop jar`.
+Hadoop Streaming utilise `stdin` / `stdout` comme interface — **aucune compilation nécessaire**.  
+Le JAR `hadoop-streaming-*.jar` (inclus dans Hadoop) s'occupe de tout le reste.
 
 ---
 
@@ -120,8 +126,8 @@ cd hadoop-spark-cluster
 
 ### 2. Important — fins de ligne (Windows uniquement)
 
-Sur Windows, les fichiers `.sh` doivent avoir des fins de ligne **LF** (pas CRLF).  
-Dans VS Code : ouvrir chaque `.sh` → cliquer sur `CRLF` en bas à droite → choisir `LF` → sauvegarder.
+Sur Windows, les fichiers `.sh` et `.py` doivent avoir des fins de ligne **LF** (pas CRLF).  
+Dans VS Code : ouvrir chaque fichier → cliquer sur `CRLF` en bas à droite → choisir `LF` → sauvegarder.
 
 ### 3. Build et démarrage
 
@@ -146,18 +152,17 @@ docker exec -it namenode bash -c "jps"
 
 ---
 
-## Lancer le job MapReduce Java
+## Lancer le job MapReduce Python
 
 ```bash
 docker exec -it namenode bash
-bash /mapreduce/wordcount/run.sh
+bash /mapreduce/wordcount/run_streaming.sh
 ```
 
 Le script fait automatiquement :
 1. Upload de `purchases.txt` dans HDFS
-2. Compilation de `SalesPerCategory.java` → JAR
-3. Soumission du job à YARN
-4. Affichage des résultats triés par chiffre d'affaires
+2. Lancement du job via `hadoop-streaming.jar` avec `mapper.py` et `reducer.py`
+3. Affichage des résultats triés par chiffre d'affaires
 
 ### Résultat attendu
 
@@ -170,6 +175,16 @@ Consumer Electronics   987654.32
 
 ---
 
+## Tester le pipeline localement (sans Docker)
+
+Tu peux tester le mapper et reducer directement sur ta machine :
+
+```bash
+cat purchases.txt | python3 mapper.py | sort | python3 reducer.py
+```
+
+---
+
 ## Interfaces Web
 
 | Interface | URL | Description |
@@ -178,8 +193,9 @@ Consumer Electronics   987654.32
 | YARN Resource Manager | http://localhost:8088 | Jobs en cours |
 | Spark History Server | http://localhost:18080 | Historique des jobs |
 
+
 ---
 
 ## Auteur
-**Ghaya Ammari**  
+**Rihab Gharbi**  
 Projet réalisé dans le cadre du cours **Big Data — 2ème année ingénierie**.
